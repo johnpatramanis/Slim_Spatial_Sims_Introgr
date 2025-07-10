@@ -15,7 +15,7 @@ initialize() {
 		"K", 5,            // carrying capacity per unit area //// Used to calcualte RHO= FECUN / ((1 + FECUN) * K)) //// Used for initial population number of individuals = K * WIDTH * HEIGHT
 		"LIFETIME", 4,     // average life span ////
 		"WIDTH", 50.0,     // width of the simulated area ////
-		"HEIGHT", 20.0,    // height of the simulated area ////
+		"HEIGHT", 50.0,    // height of the simulated area ////
 		"RUNTIME", 1000,    // total number of ticks to run the simulation for ////
 		"L", 1e8,          // genome length ////
 		"R", 1e-8,         // recombination rate ////
@@ -27,7 +27,7 @@ initialize() {
 	
 	// Set up constants that depend on externally defined parameters
 	defineConstant("FECUN", 1 / LIFETIME);
-	defineConstant("RHO", FECUN / ((1 + FECUN) * K));
+	defineConstant("RHO", FECUN /((1 + FECUN) * K));
 	defineConstant("PARAMS", defaults);
 	
 	setSeed(SEED);
@@ -41,22 +41,11 @@ initialize() {
 	
 	// spatial interaction for local density measurement
 	initializeInteractionType(1, "xy", reciprocal=T, maxDistance=3 * SX); //// Initiate a local interaction using the 3*SX as maximum distance
-	i1.setInteractionFunction("n", 1.0/(2*PI*SX^2), SX); ///// and make it a normal distribution with a mean of 1.0/(2*PI*SX^2)
+	i1.setInteractionFunction("n", 1.0/(2*PI*(SX^2)), SX); ///// and make it a normal distribution with a mean of 1.0/(2*PI*SX^2)
 	
 	// spatial interaction for mate choice
 	initializeInteractionType(2, "xy", reciprocal=T, maxDistance=3 * SM); //// Initiate a local interaction using the 3*SM as maximum distance
-	i2.setInteractionFunction("n", 1.0/(2*PI*SM^2), SM); ///// and make it a normal distribution with a mean of 1.0/(2*PI*SM^2)
-
-	// spatial interaction for local density measurement
-	initializeInteractionType(3, "xy", reciprocal=T, maxDistance=3 * SX); //// Initiate a local interaction using the 3*SX as maximum distance
-	i3.setInteractionFunction("n", 1.0/(2*PI*SX^2), SX); ///// and make it a normal distribution with a mean of 1.0/(2*PI*SX^2)
-	
-	// spatial interaction for mate choice
-	initializeInteractionType(4, "xy", reciprocal=T, maxDistance=3 * SM); //// Initiate a local interaction using the 3*SM as maximum distance
-	i4.setInteractionFunction("n", 1.0/(2*PI*SM^2), SM); ///// and make it a normal distribution with a mean of 1.0/(2*PI*SM^2)
-
-
-
+	i2.setInteractionFunction("n", 1.0/(2*PI*(SM^2)), SM); ///// and make it a normal distribution with a mean of 1.0/(2*PI*SM^2)
 
 
 }
@@ -64,14 +53,10 @@ initialize() {
 1 first() {
 	
 	/// Set up pop1
-	sim.addSubpop("p1", asInteger(500));  ////// add Initial population 
-	p1.setSpatialBounds(c(0, 0, 9, 9));   /////// Add spatial bounds for population 1
+	sim.addSubpop("p1", asInteger(K*WIDTH*HEIGHT));  ////// add Initial population 
+	p1.setSpatialBounds(c(0, 0, 50, 50));   /////// Add spatial bounds for population 1
 	p1.individuals.setSpatialPosition(p1.pointUniform(p1.individualCount));  ///// Place Individuals from pop1 into spatial boundaries of population 1
 	
-	/// Set up pop2
-	sim.addSubpop("p2", asInteger(500));  ////// add Initial population 
-	p2.setSpatialBounds(c(11, 11, 20, 20));   /////// Add spatial bounds for population 1
-	p2.individuals.setSpatialPosition(p2.pointUniform(p2.individualCount));  ///// Place Individuals from pop1 
 	
 	//////
 	log = community.createLogFile(OUTDIR + "/Spatial_Simulations_SLim"+"sim_log.txt", logInterval=1000);
@@ -82,17 +67,11 @@ initialize() {
 }
 
 
-200 first() {
-	p1.setSpatialBounds(c(0, 0, 20, 20));
-	p2.setSpatialBounds(c(0, 0, 20, 20));
-}
 
 
 first() {
 	// preparation for the reproduction() callback
-	i2.evaluate(p1);
-	i2.evaluate(p2);
-	
+	i2.evaluate(p1);	
 }
 
 
@@ -107,28 +86,22 @@ reproduction() { ///// Works for both populations
 early() {
 	//// Disperse offspring
 	offspring_p1 = p1.subsetIndividuals(maxAge=0);
-	offspring_p2 = p2.subsetIndividuals(maxAge=0);
 	
 	p1.deviatePositions(offspring_p1, "stopping", 1, "n", SD); /////// population_name.deviatePositions(vector_of_individuals, what_happens_at_boundaries ,cutoff_to_zero_at_specific_distance (max distnace?) ,normal_distribution ,mean of distribution)
-	p2.deviatePositions(offspring_p2, "stopping", 1, "n", SD); /////// population_name.deviatePositions(vector_of_individuals, what_happens_at_boundaries ,cutoff_to_zero_at_specific_distance (max distnace?) ,normal_distribution ,mean of distribution)
 	
 	
 	// Measure local density and use it for density regulation
 	i1.evaluate(p1);
-	i3.evaluate(p2);
 	
 	inds_p1 = p1.individuals;
-	inds_p2 = p2.individuals;
 
 	
 	
 	competition_p1 = i1.localPopulationDensity(inds_p1);
-	competition_p2 = i3.localPopulationDensity(inds_p2);
 
 	
 	
 	inds_p1.fitnessScaling = pmin(0.95,(1 / (1 + RHO * competition_p1)));
-	inds_p2.fitnessScaling = pmin(0.95,(1 / (1 + RHO * competition_p2)));
 	
 	
 }
